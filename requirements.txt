@@ -1,0 +1,14 @@
+transformers
+sentence-transformers
+nltk
+sentencepiece
+SpeechRecognition
+sacremoses
+pytz
+pandas
+matplotlib
+langdetect
+googletrans
+hf_xet
+protobuf
+textblob
