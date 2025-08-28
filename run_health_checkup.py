@@ -14,10 +14,9 @@ def run_health_checkup():
         print("❌ Invalid input. Please enter numeric values.")
         return
 
-    
+    # Add checkup and automatically get advice
     add_health_checkup(current_user, systolic, diastolic, heart_rate, temperature)
     print("💾 Health checkup saved successfully.\n")
-    
 
     # Show last 5 records
     print("📊 Last 5 Health Records:")
@@ -28,4 +27,3 @@ def run_health_checkup():
 
 if __name__ == "__main__":
     run_health_checkup()
-
