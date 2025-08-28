@@ -5,25 +5,59 @@ from datetime import datetime
 from pytz import timezone
 from app.utils.config import BASE_DIR
 
-def load_health_data(filename="health_data.csv"):
+DATA_FILE = os.path.join(BASE_DIR, "data", "health_data.csv")
+
+def load_health_data():
     """Load or create the health data CSV."""
-    file_path = os.path.join(BASE_DIR, "data", filename)
-    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
     
-    if os.path.exists(file_path):
-        return pd.read_csv(file_path)
+    if os.path.exists(DATA_FILE):
+        return pd.read_csv(DATA_FILE)
     else:
         df = pd.DataFrame(columns=["User", "Date", "BP_Systolic", "BP_Diastolic", "Heart_Rate", "Temperature"])
-        df.to_csv(file_path, index=False)
+        df.to_csv(DATA_FILE, index=False)
         return df
 
-def save_health_data(df, filename="health_data.csv"):
-    """Save health data CSV."""
-    file_path = os.path.join(BASE_DIR, "data", filename)
-    df.to_csv(file_path, index=False)
+def save_health_data(df):
+    """Save the entire DataFrame (append already handled outside)."""
+    df.to_csv(DATA_FILE, index=False)
+
+def give_health_advice(systolic, diastolic, heart_rate, temperature):
+    """Provide personalized health advice based on vitals."""
+    advice = []
+
+    # Blood Pressure
+    if systolic > 140 or diastolic > 90:
+        advice.append("⚠ High BP. Reduce salt, manage stress, consult a doctor if it persists.")
+    elif systolic < 90 or diastolic < 60:
+        advice.append("⚠ Low BP. Stay hydrated and eat balanced food. See a doctor if frequent.")
+    else:
+        advice.append("✅ BP is within normal range.")
+
+    # Heart Rate
+    if heart_rate > 100:
+        advice.append("⚠ High heart rate. Rest, avoid caffeine, manage stress.")
+    elif heart_rate < 60:
+        advice.append("⚠ Low heart rate. Light exercise may help. Consult a doctor if persistent.")
+    else:
+        advice.append("✅ Heart rate is normal.")
+
+    # Temperature
+    if temperature > 38:
+        advice.append("⚠ Fever detected. Rest, drink fluids, and see a doctor if it stays high.")
+    elif temperature < 36:
+        advice.append("⚠ Low temperature. Keep warm and monitor your health.")
+    else:
+        advice.append("✅ Temperature is normal.")
+
+    print("\n💡 Health Advice:")
+    for tip in advice:
+        print("   -", tip)
+
+    return advice
 
 def add_health_checkup(user, systolic, diastolic, heart_rate, temperature):
-    """Add a health checkup record for a user."""
+    """Add a health checkup record for a user and provide advice."""
     df = load_health_data()
     india_time = datetime.now(timezone("Asia/Kolkata")).strftime("%Y-%m-%d %H:%M:%S")
     
@@ -40,6 +74,9 @@ def add_health_checkup(user, systolic, diastolic, heart_rate, temperature):
     save_health_data(df)
     print(f"✅ Health data added for {user} at {india_time}")
 
+    # Provide health advice after saving
+    give_health_advice(systolic, diastolic, heart_rate, temperature)
+
 def show_recent_health_data(user, last_n=5):
     """Display recent health data for a user."""
     df = load_health_data()
@@ -55,13 +92,13 @@ def show_recent_health_data(user, last_n=5):
 def plot_health_trends(user):
     """Plot and save trends of BP, Heart Rate, and Temperature."""
     df = load_health_data()
-    user_df = df[df["User"] == user]
+    user_df = df[df["User"] == user].copy()  # avoid SettingWithCopyWarning
     
     if user_df.empty:
         print(f"⚠ No health records found for {user}")
         return
     
-    user_df["Date"] = pd.to_datetime(user_df["Date"])
+    user_df.loc[:, "Date"] = pd.to_datetime(user_df["Date"])
     plt.figure(figsize=(10, 6))
     plt.plot(user_df["Date"], user_df["BP_Systolic"], label="BP Systolic")
     plt.plot(user_df["Date"], user_df["BP_Diastolic"], label="BP Diastolic")
