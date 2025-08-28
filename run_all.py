@@ -28,7 +28,7 @@ def main():
 
     if active_members == [] and "No user found" in greeting:
         print("\n" + greeting)
-        print("🚫Sorry ! We didn't find your name in our Member List. Check and Try Again if you are a registered HOSLA Member")
+        print("🚫 Sorry! We didn't find your name in our Member List. Check and Try Again if you are a registered HOSLA Member.")
         sys.exit(0)
 
     print("\n" + greeting)
@@ -42,7 +42,7 @@ def main():
 
     # Menu loop
     while True:
-        print("\n=== Choose Your Service/s===")
+        print("\n=== Choose Your Service/s ===")
         print("1. Add Medication Reminder")
         print("2. Check Reminders")
         print("3. Send Message")
@@ -89,7 +89,8 @@ def main():
                 except ValueError:
                     print("❌ Please enter a valid number.")
         elif choice == "8":
-            health_checkup.manage_checkups(username)
+            print("\n🩺 Entering Health Checkup Module...")
+            health_checkup.manage_checkups(username)  # <-- advice is already integrated here
         elif choice == "9":
             print("👋 Goodbye! Stay healthy, Stay safe. Hosla is always with you. For any enquiry call 7811009309")
             break
