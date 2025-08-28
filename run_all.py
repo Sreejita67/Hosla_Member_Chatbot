@@ -1,4 +1,3 @@
-# run_all.py
 import os
 from app.utils import config, member_info, medication, messaging, emergency, health_checkup
 import sys
@@ -17,6 +16,41 @@ def print_emergencies_table(items):
             f"Cause: {e.get('Cause', 'N/A')} | Status: {e.get('Status', 'N/A')}"
         )
 
+# -----------------------------
+# Health checkup wrapper
+# -----------------------------
+def manage_health_checkups(input_name):
+    """Manage health checkups for a member, fetching age from Google Sheet."""
+    exact_name, age = health_checkup.load_user_info(input_name)
+    if not exact_name:
+        print(f"❌ Could not find '{input_name}' in the Google Sheet. Using 'Unknown' as age.")
+        exact_name = input_name
+        age = None
+    print(f"\nWelcome to Health Checkup Module, {exact_name} (Age: {age if age else 'Unknown'})")
+
+    # Ask user for vitals
+    try:
+        temp = float(input("Enter Temperature (°F): ").strip())
+        systolic = int(input("Enter Systolic BP (mmHg): ").strip())
+        diastolic = int(input("Enter Diastolic BP (mmHg): ").strip())
+        hr = int(input("Enter Heart Rate (bpm): ").strip())
+        chol = int(input("Enter Cholesterol (mg/dL): ").strip())
+    except ValueError:
+        print("❌ Invalid input. Please enter numeric values.")
+        return
+
+    # Record checkup
+    record = health_checkup.record_health_checkup(
+        exact_name, temp, systolic, diastolic, hr, chol, age
+    )
+
+    print("\n✅ Health Checkup Recorded!")
+    print(f"Flags: {record['Flags']}")
+    print(f"Advice: {record['Advice']}")
+
+# -----------------------------
+# Main chatbot loop
+# -----------------------------
 def main():
     print("=== Hosla Member Chatbot ===")
     username = input("Enter your name: ").strip()
@@ -51,7 +85,8 @@ def main():
         print("6. View Emergencies")
         print("7. Mark Emergency as Resolved")
         print("8. Health Checkup Updates")
-        print("9. Exit")
+        print("9. View Health Trends")
+        print("10. Exit")
 
         choice = input("Choose an option: ").strip()
 
@@ -90,8 +125,11 @@ def main():
                     print("❌ Please enter a valid number.")
         elif choice == "8":
             print("\n🩺 Entering Health Checkup Module...")
-            health_checkup.manage_checkups(username)  # <-- advice is already integrated here
+            manage_health_checkups(username)
         elif choice == "9":
+            print(f"\n📊 Viewing Health Trends for {username}...")
+            health_checkup.generate_trends(username)
+        elif choice == "10":
             print("👋 Goodbye! Stay healthy, Stay safe. Hosla is always with you. For any enquiry call 7811009309")
             break
         else:
