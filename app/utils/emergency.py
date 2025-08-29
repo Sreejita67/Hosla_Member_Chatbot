@@ -50,10 +50,12 @@ def log_emergency(details, cause):
         writer.writerow(entry)
 
 def view_emergencies():
-    """View all emergencies"""
+    """View all emergencies with Pending first, then Resolved."""
     try:
         with open(EMERGENCY_LOG, "r", encoding="utf-8") as f:
             emergencies = list(csv.DictReader(f))
+            # Sort so Pending comes before Resolved
+            emergencies.sort(key=lambda e: 0 if e["Status"] == "Pending" else 1)
             return emergencies
     except FileNotFoundError:
         return []
