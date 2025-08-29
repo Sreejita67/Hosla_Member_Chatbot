@@ -12,3 +12,6 @@ googletrans
 hf_xet
 protobuf
 textblob
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
