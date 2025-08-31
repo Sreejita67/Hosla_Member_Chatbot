@@ -102,7 +102,7 @@ def send_message(current_user, preselected_recipient=None):
 
     # 📤 Delivery Scope
     print("\nShare Options:")
-    print("1. Public (everyone except you)\n2. Only this member\n3. Multiple Members")
+    print("1. Public\n2. Only this member\n3. Multiple Members")
     choice = input("Choose (1/2/3): ").strip()
     if choice == "1":
         audience = [n for n in member_names if n.lower() != current_user.lower()]
