@@ -1,7 +1,19 @@
 import os
 import sys
+import re
 from app.utils import config, member_info, reminder, messaging, emergency, health_checkup
-from auth import authenticate_user, register_user  # ✅ Import both login + register
+from auth import authenticate_user, register_user, reset_password  # ✅ Import password reset
+
+# -----------------------------
+# Validation Helpers
+# -----------------------------
+def is_valid_mobile(mobile):
+    """Validate Indian mobile numbers (10 digits, starts with 6-9)."""
+    return bool(re.fullmatch(r"[6-9]\d{9}", str(mobile).strip()))
+
+def is_valid_email(email):
+    """Basic email validation using regex."""
+    return bool(re.fullmatch(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$", email.strip()))
 
 def print_emergencies_table(items):
     if not items:
@@ -48,22 +60,35 @@ def manage_health_checkups(input_name):
 def main():
     print("=== Hosla Member Chatbot ===")
 
-    # ✅ Ask user to Login or Register
     print("\n1. Login")
     print("2. Register (New User)")
+    print("3. Reset Password")
     choice = input("Choose an option: ").strip()
 
     if choice == "2":
         print("\n=== Register New Member ===")
         full_name = input("Enter Full Name: ").strip()
         age = input("Enter Age: ").strip()
-        role = input("Enter Role").strip()
+        role = input("Enter Role: ").strip()
         interests = input("Enter Interests (comma-separated): ").strip()
         locality = input("Enter Locality: ").strip()
         city = input("Enter City: ").strip()
         pin_code = input("Enter Pin Code: ").strip()
-        contact_no = input("Enter Contact No.: ").strip()
-        email = input("Enter Email ID: ").strip()
+
+        # ✅ Validate mobile number until correct
+        while True:
+            contact_no = input("Enter Contact No.: ").strip()
+            if is_valid_mobile(contact_no):
+                break
+            print("❌ Invalid mobile number. Must be 10 digits starting with 6-9.")
+
+        # ✅ Validate email until correct
+        while True:
+            email = input("Enter Email ID: ").strip()
+            if is_valid_email(email):
+                break
+            print("❌ Invalid email format. Please try again.")
+
         dob = input("Enter Date of Birth (DD-MM-YYYY): ").strip()
         username = input("Choose a username: ").strip()
         password = input("Choose a password: ").strip()
@@ -76,17 +101,23 @@ def main():
         if success:
             print("🎉 Registration successful! You are now logged in.")
             user_record = {
-             "Member Name": full_name,
-             "Username": username,
-             "Role": role,
-             "City": city,
-             "Pin Code": pin_code
-        }
+                "Member Name": full_name,
+                "Username": username,
+                "Role": role,
+                "City": city,
+                "Pin Code": pin_code
+            }
             member_name = full_name
         else:
             print("⚠️ Registration failed. Try again.")
             sys.exit(0)
 
+    elif choice == "3":
+        print("\n=== Password Reset ===")
+        uname = input("Enter your username: ").strip()
+        old_pw = input("Enter your old password: ").strip()
+        reset_password(uname, old_pw)
+        sys.exit(0)
 
     # -------------------------
     # Login flow
