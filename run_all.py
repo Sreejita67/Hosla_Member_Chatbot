@@ -1,6 +1,7 @@
 import os
-from app.utils import config, member_info, reminder, messaging, emergency, health_checkup
 import sys
+from app.utils import config, member_info, reminder, messaging, emergency, health_checkup
+from auth import authenticate_user, register_user  # ✅ Import both login + register
 
 def print_emergencies_table(items):
     if not items:
@@ -46,15 +47,67 @@ def manage_health_checkups(input_name):
 # -----------------------------
 def main():
     print("=== Hosla Member Chatbot ===")
-    username = input("Enter your name: ").strip()
+
+    # ✅ Ask user to Login or Register
+    print("\n1. Login")
+    print("2. Register (New User)")
+    choice = input("Choose an option: ").strip()
+
+    if choice == "2":
+        print("\n=== Register New Member ===")
+        full_name = input("Enter Full Name: ").strip()
+        age = input("Enter Age: ").strip()
+        role = input("Enter Role").strip()
+        interests = input("Enter Interests (comma-separated): ").strip()
+        locality = input("Enter Locality: ").strip()
+        city = input("Enter City: ").strip()
+        pin_code = input("Enter Pin Code: ").strip()
+        contact_no = input("Enter Contact No.: ").strip()
+        email = input("Enter Email ID: ").strip()
+        dob = input("Enter Date of Birth (DD-MM-YYYY): ").strip()
+        username = input("Choose a username: ").strip()
+        password = input("Choose a password: ").strip()
+
+        success = register_user(
+            full_name, age, role, interests, locality, city, pin_code,
+            contact_no, email, dob, username, password
+        )
+
+        if success:
+            print("🎉 Registration successful! You are now logged in.")
+            user_record = {
+             "Member Name": full_name,
+             "Username": username,
+             "Role": role,
+             "City": city,
+             "Pin Code": pin_code
+        }
+            member_name = full_name
+        else:
+            print("⚠️ Registration failed. Try again.")
+            sys.exit(0)
+
+
+    # -------------------------
+    # Login flow
+    # -------------------------
+    username = input("Enter your username: ").strip()
+    password = input("Enter your password: ").strip()
+
+    user_record = authenticate_user(username, password)
+    if not user_record:
+        print("🚫 Invalid credentials. Please check your username/password.")
+        sys.exit(0)
+
+    member_name = user_record.get("Member Name", username)
 
     greeting, pic_path, active_members = member_info.greet_user_and_show_active_members(
-        config.IMAGE_DIR, username
+        config.IMAGE_DIR, member_name
     )
 
     if active_members == [] and "No user found" in greeting:
         print("\n" + greeting)
-        print("🚫 Sorry! We didn't find your name in our Member List. Check and Try Again if you are a registered HOSLA Member.")
+        print("🚫 Sorry! We didn't find your name in our Member List.")
         sys.exit(0)
 
     print("\n" + greeting)
@@ -66,6 +119,9 @@ def main():
     for m in active_members:
         print(" - " + m)
 
+    # -------------------------
+    # Main Menu Loop
+    # -------------------------
     while True:
         print("\n=== Choose Your Service/s ===")
         print("1. Add Reminder")
@@ -83,17 +139,17 @@ def main():
         choice = input("Choose an option: ").strip()
 
         if choice == "1":
-            reminder.add_reminder(username)
+            reminder.add_reminder(member_name)
         elif choice == "2":
-            reminder.check_reminders(username=username, show_all=True)
+            reminder.check_reminders(username=member_name, show_all=True)
         elif choice == "3":
-            reminder.mark_as_taken(username)
+            reminder.mark_as_taken(member_name)
         elif choice == "4":
-            messaging.send_message(username)
+            messaging.send_message(member_name)
         elif choice == "5":
-            messaging.view_messages_for_user(username)
+            messaging.view_messages_for_user(member_name)
         elif choice == "6":
-            details = emergency.fetch_member_details(username)
+            details = emergency.fetch_member_details(member_name)
             if not details:
                 print("❌ Your member details were not found in the Google Sheet.")
             else:
@@ -119,10 +175,10 @@ def main():
                     print("❌ Please enter a valid number.")
         elif choice == "9":
             print("\n🩺 Entering Health Checkup Module...")
-            manage_health_checkups(username)
+            manage_health_checkups(member_name)
         elif choice == "10":
-            print(f"\n📊 Viewing Health Trends for {username}...")
-            health_checkup.generate_trends(username)
+            print(f"\n📊 Viewing Health Trends for {member_name}...")
+            health_checkup.generate_trends(member_name)
         elif choice == "11":
             print("👋 Goodbye! Stay healthy, Stay safe. Hosla is always with you. For any enquiry call 7811009309")
             break
