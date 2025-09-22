@@ -1,7 +1,7 @@
 import os
 import sys
 import re
-from app.utils import config, member_info, reminder, messaging, emergency, health_checkup
+from app.utils import config, member_info, reminder, messaging, emergency, health_checkup, song_search
 from auth import authenticate_user, register_user, reset_password  # ✅ Import password reset
 
 # -----------------------------
@@ -165,7 +165,8 @@ def main():
         print("8. Mark Emergency as Resolved")
         print("9. Health Checkup Updates")
         print("10. View Health Trends")
-        print("11. Exit")
+        print("11. Find Song by Lyrics")
+        print("12. Exit")
 
         choice = input("Choose an option: ").strip()
 
@@ -211,6 +212,9 @@ def main():
             print(f"\n📊 Viewing Health Trends for {member_name}...")
             health_checkup.generate_trends(member_name)
         elif choice == "11":
+            lyrics = input("🎶 Enter some song lyrics: ").strip()
+            song_search.find_song_from_lyrics(lyrics)
+        elif choice == "12":
             print("👋 Goodbye! Stay healthy, Stay safe. Hosla is always with you. For any enquiry call 7811009309")
             break
         else:
