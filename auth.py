@@ -20,28 +20,38 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapi
 try:
     creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
     client = gspread.authorize(creds)
-
-    # ✅ Open spreadsheet by URL and select worksheet
     spreadsheet = client.open_by_url(SPREADSHEET_URL)
     sheet = spreadsheet.worksheet(WORKSHEET_NAME)
 except FileNotFoundError:
     sheet = None  # Fallback if creds missing
     print("⚠️ hosla-472907-c7d47bfcd616.json not found, running in READ-only mode")
 
+# -----------------------------
+# Helpers
+# -----------------------------
+def is_valid_mobile(mobile):
+    """Validate Indian mobile numbers (10 digits, starts with 6-9)."""
+    return bool(re.fullmatch(r"[6-9]\d{9}", str(mobile).strip()))
+
+def is_valid_email(email):
+    """Basic email validation using regex."""
+    return bool(re.fullmatch(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$", email.strip()))
+
 def load_sheet():
     """Fetch Google Sheet as DataFrame using gspread to preserve exact data."""
     if sheet is None:
-        # fallback to CSV public link (read-only)
         response = requests.get(SHEET_URL)
         response.raise_for_status()
         return pd.read_csv(io.StringIO(response.text))
 
-    # ✅ Use raw values to avoid gspread's automatic conversions
     raw_data = sheet.get_all_values()
     headers = raw_data[0]
     rows = raw_data[1:]
     return pd.DataFrame(rows, columns=headers)
 
+# -----------------------------
+# Authentication
+# -----------------------------
 def authenticate_user(username, password, debug=False):
     df = load_sheet()
 
@@ -65,7 +75,6 @@ def authenticate_user(username, password, debug=False):
             print("DEBUG: Stored password is NaN/empty.")
         return None
 
-    # Clean and strip hash
     stored_hash = str(stored_val).strip().strip('"').strip("'")
     stored_hash = "".join(stored_hash.split())  # remove whitespace/newlines
     stored_hash = re.sub(r"[^\x20-\x7E]", "", stored_hash)  # remove hidden chars
@@ -73,9 +82,6 @@ def authenticate_user(username, password, debug=False):
     if debug:
         print(f"DEBUG: Cleaned stored_hash repr: {repr(stored_hash)}")
         print(f"DEBUG: Cleaned hash length: {len(stored_hash)}")
-
-    if len(stored_hash) != 60 and stored_hash.startswith("$2b$"):
-        print("⚠️ WARNING: Hash length is not 60 — Google Sheets may have corrupted the value.")
 
     if stored_hash.startswith(("$2b$", "$2a$", "$2y$")):
         try:
@@ -95,33 +101,30 @@ def authenticate_user(username, password, debug=False):
         # fallback plaintext
         return row.to_dict() if stored_hash == password else None
 
-
+# -----------------------------
+# Registration
+# -----------------------------
 def register_user(full_name, age, role, interests, locality, city, pin_code,
                   contact_no, email, dob, username, password,
                   profile_picture="", active="Yes"):
     if sheet is None:
         raise RuntimeError("❌ Cannot register: hosla-472907-c7d47bfcd616.json missing!")
 
-    # ✅ Validate mobile number
     if not is_valid_mobile(contact_no):
         print(f"❌ Invalid mobile number '{contact_no}'. Must be 10 digits starting with 6-9.")
         return False
 
-    # ✅ Validate email
     if not is_valid_email(email):
         print(f"❌ Invalid email address '{email}'.")
         return False
 
-    # ✅ Normalize username
     username = str(username).strip().lower()
 
-    # ✅ Check duplicate username
     df = load_sheet()
     if username in df["Username"].astype(str).str.lower().values:
         print(f"⚠️ Username '{username}' already exists. Choose another.")
         return False
 
-    # ✅ Hash password and self-check
     hashed_pw = bcrypt.hashpw(password.encode(), bcrypt.gensalt(rounds=12)).decode()
     if not bcrypt.checkpw(password.encode(), hashed_pw.encode()):
         raise ValueError("❌ Hash verification failed after generation!")
@@ -135,13 +138,63 @@ def register_user(full_name, age, role, interests, locality, city, pin_code,
     print(f"✅ User {full_name} registered successfully with username '{username}'")
     return True
 
+# -----------------------------
+# Password Reset
+# -----------------------------
+def reset_password(username, old_password):
+    """
+    Reset password for an existing user after verifying old password.
+    Asks user to confirm new password before saving.
+    """
+    df = load_sheet()
+    username = str(username).strip().lower()
+    df_username_series = df["Username"].astype(str).str.strip().str.lower()
+    matches = df[df_username_series == username]
+
+    if matches.empty:
+        print(f"❌ Username '{username}' not found.")
+        return False
+
+    row_idx = matches.index[0]
+    row = matches.iloc[0]
+    stored_val = row.get("Password", "")
+
+    if pd.isna(stored_val) or not str(stored_val).strip():
+        print("❌ Stored password missing or invalid.")
+        return False
+
+    stored_hash = str(stored_val).strip().strip('"').strip("'")
+    stored_hash = "".join(stored_hash.split())
+    stored_hash = re.sub(r"[^\x20-\x7E]", "", stored_hash)
+
+    if stored_hash.startswith(("$2b$", "$2a$", "$2y$")):
+        if not bcrypt.checkpw(old_password.encode(), stored_hash.encode()):
+            print("❌ Old password is incorrect.")
+            return False
+    else:
+        if stored_hash != old_password:
+            print("❌ Old password is incorrect.")
+            return False
+
+    new_password = input("Enter your new password: ")
+    confirm_password = input("Confirm your new password: ")
+
+    if new_password != confirm_password:
+        print("❌ Passwords do not match. Try again.")
+        return False
+
+    if len(new_password) < 6:
+        print("⚠️ Password too short. Use at least 6 characters.")
+        return False
+
+    new_hashed_pw = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt(rounds=12)).decode()
+
+    sheet.update_cell(row_idx + 2, df.columns.get_loc("Password") + 1, new_hashed_pw)
+    print(f"✅ Password updated successfully for '{username}'.")
+    return True
+
 # Example usage
 if __name__ == "__main__":
-    # Example Register
-    # register_user("Rina Das", 21, "Member", "Dance, Music", "Salt Lake", "Kolkata", "700091",
-    #               "9876543210", "rina@example.com", "29-10-2004", "rina_d", "mypassword")
-
-    # Example Login
     user = authenticate_user("rina_d", "mypassword")
     if user:
         print(f"✅ Welcome {user['Member Name']} ({user['Role']})")
